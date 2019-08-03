@@ -14,13 +14,22 @@ import java.util.List;
 public class ImageController {
 
     @RequestMapping(value = "/images", method = RequestMethod.GET, headers = "Accept=application/json")
-    public List<String> getImages() {
+    public List<String> getImages(@Nullable @RequestParam String q) {
+        if (q == null || "".equals(q)) {
+            q = "clouds";
+        }
+
         List<String> hrefs = new ArrayList<>();
-        String json = new RestTemplate().getForObject("https://images-api.nasa.gov/search?q=clouds", String.class);
+        String uri = "https://images-api.nasa.gov/search?q=" + q;
+
+        String json = new RestTemplate().getForObject(uri, String.class);
         new JsonParser().parse(json).getAsJsonObject()
-                .get("collection").getAsJsonObject()
-                .get("items").getAsJsonArray()
-                .forEach(item -> item.getAsJsonObject()
+            .get("collection").getAsJsonObject()
+            .get("items").getAsJsonArray()
+            .forEach(item -> {
+                JsonObject itemJson = item.getAsJsonObject();
+                if (itemJson.has("links")) {
+                    itemJson
                         .get("links").getAsJsonArray()
                         .forEach(link -> {
                             JsonObject linkObject = link.getAsJsonObject();
@@ -28,8 +37,9 @@ public class ImageController {
                             if ("preview".equals(relString)) {
                                 hrefs.add(linkObject.get("href").getAsString());
                             }
-                        })
-                );
+                        });
+                }
+            });
         return hrefs;
     }
 }
