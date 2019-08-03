@@ -4,8 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -20,9 +22,12 @@ import java.util.List;
 public class ImageController {
 
     @RequestMapping(value = "/images", method = RequestMethod.GET, headers = "Accept=application/json")
-    public List<String> getImages() {
+    public List<String> getImages(@Nullable @RequestParam String q) {
+        if (q == null || "".equals(q)) {
+            q = "clouds";
+        }
         List<String> hrefs = new ArrayList<>();
-        String uri = "https://images-api.nasa.gov/search?q=clouds";
+        String uri = "https://images-api.nasa.gov/search?q=" + q;
         try {
             URLConnection request = new URL(uri).openConnection();
             request.connect();
@@ -33,10 +38,14 @@ public class ImageController {
                     .get("collection").getAsJsonObject()
                     .get("items").getAsJsonArray();
             JsonArray links = new JsonArray();
-            items.forEach(item -> links.addAll(item
-                    .getAsJsonObject()
-                    .get("links")
-                    .getAsJsonArray()));
+            items.forEach(item -> {
+                if (item.getAsJsonObject().has("links")) {
+                    links.addAll(item
+                        .getAsJsonObject()
+                        .get("links")
+                        .getAsJsonArray());
+                }
+            });
             links.forEach(link -> {
                 JsonObject linkObject = link.getAsJsonObject();
                 String relString = linkObject.get("rel").getAsString();
